@@ -68,22 +68,22 @@ func (configValue *Value[T]) Set(value T) {
 	}
 }
 
-// Value returns the stored value.
-func (configValue *Value[T]) Value() T {
+// Get returns the stored value.
+func (configValue *Value[T]) Get() T {
 	return configValue.value
 }
 
-// ValueOk returns the stored value and a boolean indicating if the value
+// GetOk returns the stored value and a boolean indicating if the value
 // was explicitly set.
-func (configValue *Value[T]) ValueOk() (T, bool) {
+func (configValue *Value[T]) GetOk() (T, bool) {
 	return configValue.value, configValue.set
 }
 
-// ValueWait returns the stored value, but blocks until the value is next
+// GetWait returns the stored value, but blocks until the value is next
 // explicitly set, or the Context is cancelled. If returning after Context
 // cancellation, the last known stored value will be returned. This may be
 // the zero value of the type, if the value was never set.
-func (configValue *Value[T]) ValueWait(ctx context.Context) (T, error) {
+func (configValue *Value[T]) GetWait(ctx context.Context) (T, error) {
 	configValue.initWaiting()
 
 	// acquiring the lock ensures the waiting channel isn't currently being drained.
@@ -93,9 +93,9 @@ func (configValue *Value[T]) ValueWait(ctx context.Context) (T, error) {
 
 	select {
 	case <-ctx.Done():
-		return configValue.Value(), ctx.Err()
+		return configValue.Get(), ctx.Err()
 	case configValue.waiting <- true:
-		return configValue.Value(), nil
+		return configValue.Get(), nil
 	}
 }
 

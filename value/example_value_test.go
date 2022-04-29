@@ -54,12 +54,12 @@ func ExampleValue() {
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	repeatUntilCancel(ctx, func() {
-		if value, err := myConfig.temperature.ValueWait(ctx); err == nil {
+		if value, err := myConfig.temperature.GetWait(ctx); err == nil {
 			fmt.Printf("new temperature value: %v\n", value)
 		}
 	})
 	repeatUntilCancel(ctx, func() {
-		if value, err := myConfig.humidity.ValueWait(ctx); err == nil {
+		if value, err := myConfig.humidity.GetWait(ctx); err == nil {
 			fmt.Printf("new humidity value: %v\n", value)
 		}
 	})

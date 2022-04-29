@@ -22,7 +22,7 @@ import (
 
 // Value is a generic type that represents explicitly settable values.
 type Value[T any] struct {
-	value   T
+	stored  T
 	set     bool
 	mu      sync.Mutex
 	waiting chan bool
@@ -32,12 +32,12 @@ type Value[T any] struct {
 // makes it blocking even on the first write.
 //
 // initWaiting acquires the lock from start to finish.
-func (configValue *Value[T]) initWaiting() {
-	configValue.mu.Lock()
-	defer configValue.mu.Unlock()
+func (v *Value[T]) initWaiting() {
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
-	if configValue.waiting == nil {
-		configValue.waiting = make(chan bool, 0)
+	if v.waiting == nil {
+		v.waiting = make(chan bool, 0)
 	}
 }
 
@@ -48,62 +48,62 @@ func (configValue *Value[T]) initWaiting() {
 // * setting the value
 //
 // * draining the waiting channel
-func (configValue *Value[T]) Set(value T) {
-	configValue.initWaiting()
+func (v *Value[T]) Set(storeValue T) {
+	v.initWaiting()
 
 	// lock so nothing can add to waiting until after it's drained
-	configValue.mu.Lock()
-	defer configValue.mu.Unlock()
+	v.mu.Lock()
+	defer v.mu.Unlock()
 
-	configValue.value = value
-	configValue.set = true
+	v.stored = storeValue
+	v.set = true
 
 	// drain waiting
 	for {
 		select {
 		default:
 			return
-		case <-configValue.waiting:
+		case <-v.waiting:
 		}
 	}
 }
 
 // Get returns the stored value.
-func (configValue *Value[T]) Get() T {
-	return configValue.value
+func (v *Value[T]) Get() T {
+	return v.stored
 }
 
 // GetOk returns the stored value and a boolean indicating if the value
 // was explicitly set.
-func (configValue *Value[T]) GetOk() (T, bool) {
-	return configValue.value, configValue.set
+func (value *Value[T]) GetOk() (T, bool) {
+	return value.stored, value.set
 }
 
 // GetWait returns the stored value, but blocks until the value is next
 // explicitly set, or the Context is cancelled. If returning after Context
 // cancellation, the last known stored value will be returned. This may be
 // the zero value of the type, if the value was never set.
-func (configValue *Value[T]) GetWait(ctx context.Context) (T, error) {
-	configValue.initWaiting()
+func (v *Value[T]) GetWait(ctx context.Context) (T, error) {
+	v.initWaiting()
 
 	// acquiring the lock ensures the waiting channel isn't currently being drained.
 	// it is immediately unlocked again.
-	configValue.mu.Lock()
-	configValue.mu.Unlock()
+	v.mu.Lock()
+	v.mu.Unlock()
 
 	select {
 	case <-ctx.Done():
-		return configValue.Get(), ctx.Err()
-	case configValue.waiting <- true:
-		return configValue.Get(), nil
+		return v.Get(), ctx.Err()
+	case v.waiting <- true:
+		return v.Get(), nil
 	}
 }
 
 // New returns a new Explicit with its value explicitly set.
-func New[T any](value T) *Value[T] {
-	var newExplicit Value[T]
+func New[T any](storeValue T) *Value[T] {
+	var newValue Value[T]
 
-	newExplicit.Set(value)
+	newValue.Set(storeValue)
 
-	return &newExplicit
+	return &newValue
 }

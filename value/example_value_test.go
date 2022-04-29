@@ -58,24 +58,24 @@ func ExampleValue() {
 			fmt.Printf("new temperature value: %v\n", value)
 		}
 	})
-	repeatUntilCancel(ctx, func() {
-		if value, err := myConfig.humidity.GetWait(ctx); err == nil {
-			fmt.Printf("new humidity value: %v\n", value)
-		}
-	})
 
 	time.Sleep(50 * time.Millisecond)
 	myConfig.temperature.Set(10)
 	time.Sleep(50 * time.Millisecond)
-	myConfig.humidity.Set(11)
+	myConfig.temperature.Set(11)
 	time.Sleep(50 * time.Millisecond)
-	myConfig.temperature.Set(12)
+
+	if v, err := myConfig.humidity.GetWaitTrigger(ctx, func() {
+		myConfig.humidity.Set(12)
+	}); err == nil {
+		fmt.Printf("new triggered humidity value: %v\n", v)
+	}
 	time.Sleep(50 * time.Millisecond)
 
 	ctxCancel()
 	mainWG.Wait()
 
 	// Output: new temperature value: 10
-	// new humidity value: 11
-	// new temperature value: 12
+	// new temperature value: 11
+	// new triggered humidity value: 12
 }

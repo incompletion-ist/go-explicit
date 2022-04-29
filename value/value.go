@@ -99,6 +99,34 @@ func (v *Value[T]) GetWait(ctx context.Context) (T, error) {
 	}
 }
 
+// waitResponse can store the response from GetWait. It exists to be used for channel
+// types.
+type waitResponse[T any] struct {
+	stored T
+	err    error
+}
+
+// GetWaitTrigger backgrounds a call to GetWait, then runs the given trigger function.
+func (v *Value[T]) GetWaitTrigger(ctx context.Context, trigger func()) (T, error) {
+	waitChannel := make(chan waitResponse[T])
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		wg.Done()
+
+		var waitingResponse waitResponse[T]
+		waitingResponse.stored, waitingResponse.err = v.GetWait(ctx)
+		waitChannel <- waitingResponse
+	}()
+	wg.Wait()
+
+	trigger()
+
+	waitedGot := <-waitChannel
+	return waitedGot.stored, waitedGot.err
+}
+
 // New returns a new Explicit with its value explicitly set.
 func New[T any](storeValue T) *Value[T] {
 	var newValue Value[T]
